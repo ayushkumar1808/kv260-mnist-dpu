@@ -1,0 +1,25 @@
+[Unit]
+Description=KV260 MNIST DPU browser API
+Requires=kv260-logitech-hdmi.service
+After=network-online.target kv260-logitech-hdmi.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+SupplementaryGroups=render
+WorkingDirectory=/home/ubuntu/kv260-mnist-dpu/app
+Environment=XRT_INI_PATH=/home/ubuntu/kv260-mnist-dpu/xrt.ini
+Environment=LD_LIBRARY_PATH=/home/ubuntu/kv260-mnist-dpu/runtime5/lib
+Environment=PYTHONPATH=/home/ubuntu/kv260-mnist-dpu/runtime5/lib/python
+Environment=XLNX_VART_FIRMWARE=/lib/firmware/xilinx/kv260-smartcam/kv260-smartcam.xclbin
+Environment=XLNX_DISABLE_LOAD_XCLBIN=1
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /home/ubuntu/kv260-mnist-dpu/app/mnist_api.py --model /home/ubuntu/kv260-mnist-dpu/model/mnist12_b3136.xmodel --index /home/ubuntu/kv260-mnist-dpu/app/index.html --bind 127.0.0.1 --port 8765
+Restart=on-failure
+RestartSec=2
+TimeoutStartSec=30
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

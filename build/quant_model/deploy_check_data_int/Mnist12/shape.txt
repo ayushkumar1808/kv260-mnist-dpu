@@ -1,0 +1,10 @@
+(1, 28, 28, 1): Mnist12::input_0
+(1, 28, 28, 8): Mnist12::Mnist12/Conv2d[conv1]/input.3
+(1, 28, 28, 8): Mnist12::Mnist12/ReLU[relu1]/189
+(1, 14, 14, 8): Mnist12::Mnist12/MaxPool2d[pool1]/input.5
+(1, 14, 14, 16): Mnist12::Mnist12/Conv2d[conv2]/input.7
+(1, 14, 14, 16): Mnist12::Mnist12/ReLU[relu2]/223
+(1, 4, 4, 16): Mnist12::Mnist12/MaxPool2d[pool2]/237
+(1, 16, 4, 4): Mnist12::Mnist12/MaxPool2d[pool2]/237_sink_transpose_0
+(1, 256): Mnist12::Mnist12/input
+(1, 10): Mnist12::Mnist12/Linear[fc]/241

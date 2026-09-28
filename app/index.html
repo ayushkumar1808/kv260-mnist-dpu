@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KV260 // MNIST TERMINAL</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #050805;
+      --panel: #080d08;
+      --green: #57ff57;
+      --green-dim: #1e7d29;
+      --amber: #ffb000;
+      --red: #ff4545;
+      --white: #e8ffe8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--green);
+      font-family: "Courier New", Courier, monospace;
+      font-size: 15px;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent 3px,
+        rgba(87, 255, 87, .025) 3px,
+        rgba(87, 255, 87, .025) 4px
+      );
+      z-index: 10;
+    }
+
+    main {
+      width: min(1120px, calc(100% - 24px));
+      margin: 0 auto;
+      padding: 18px 0 28px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 12px 14px;
+      border: 2px solid var(--green);
+      background: var(--panel);
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--white);
+      font: bold clamp(1.25rem, 3vw, 1.75rem) "Courier New", monospace;
+      letter-spacing: .04em;
+    }
+
+    .subline {
+      margin-top: 5px;
+      color: var(--green-dim);
+      font-size: .8rem;
+    }
+
+    #linkStatus {
+      min-width: max-content;
+      padding: 5px 8px;
+      border: 1px solid var(--green-dim);
+      color: var(--amber);
+      font-size: .78rem;
+      text-align: right;
+    }
+
+    #linkStatus.online { color: var(--green); border-color: var(--green); }
+    #linkStatus.error { color: var(--red); border-color: var(--red); }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(340px, .92fr) minmax(400px, 1.08fr);
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .panel {
+      border: 2px solid var(--green-dim);
+      background: var(--panel);
+    }
+
+    .panel-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 10px;
+      border-bottom: 2px solid var(--green-dim);
+      color: var(--white);
+      font-weight: bold;
+    }
+
+    .panel-title span:last-child {
+      color: var(--green-dim);
+      font-weight: normal;
+      font-size: .8rem;
+    }
+
+    .canvas-area { padding: 14px; }
+
+    #drawCanvas {
+      display: block;
+      width: min(100%, 450px);
+      height: auto;
+      aspect-ratio: 1;
+      margin: 0 auto;
+      border: 2px solid var(--green);
+      background: #000;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .input-controls {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 10px;
+      padding: 0 14px 14px;
+    }
+
+    button {
+      min-height: 42px;
+      border: 2px solid var(--green);
+      border-radius: 0;
+      background: #000;
+      color: var(--green);
+      font: bold .9rem "Courier New", monospace;
+      cursor: pointer;
+    }
+
+    button:hover { color: #000; background: var(--green); }
+    button:active { background: var(--white); }
+
+    .live-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--amber);
+      color: var(--amber);
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .output-top {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      border-bottom: 2px solid var(--green-dim);
+    }
+
+    .prediction-box {
+      display: grid;
+      place-items: center;
+      min-height: 164px;
+      border-right: 2px solid var(--green-dim);
+      background: #000;
+    }
+
+    #prediction {
+      color: var(--amber);
+      font-size: 7rem;
+      font-weight: bold;
+      line-height: 1;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .metric {
+      min-height: 82px;
+      padding: 10px;
+      border-right: 1px solid var(--green-dim);
+      border-bottom: 1px solid var(--green-dim);
+    }
+
+    .metric:nth-child(even) { border-right: 0; }
+    .metric:nth-child(n+3) { border-bottom: 0; }
+    .metric-label { color: var(--green-dim); font-size: .72rem; }
+    .metric-value { margin-top: 8px; color: var(--white); font-size: 1.35rem; font-weight: bold; }
+
+    .model-input {
+      display: grid;
+      grid-template-columns: 86px 1fr;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-bottom: 2px solid var(--green-dim);
+    }
+
+    #previewCanvas {
+      width: 84px;
+      height: 84px;
+      border: 2px solid var(--green-dim);
+      background: #000;
+      image-rendering: pixelated;
+    }
+
+    .input-copy { color: var(--green-dim); font-size: .78rem; line-height: 1.55; }
+    .input-copy strong { color: var(--green); }
+
+    .scores-wrap { padding: 10px 12px 12px; }
+    .scores-head { color: var(--green-dim); font-size: .72rem; margin-bottom: 6px; }
+    #scores { display: grid; gap: 4px; }
+
+    .score-row {
+      display: grid;
+      grid-template-columns: 18px 1fr 42px;
+      gap: 8px;
+      align-items: center;
+      min-height: 18px;
+      color: var(--green-dim);
+      font-size: .8rem;
+    }
+
+    .score-bar {
+      height: 12px;
+      border: 1px solid var(--green-dim);
+      background: #000;
+    }
+
+    .score-fill { height: 100%; width: 0; background: var(--green-dim); }
+    .score-row.winner { color: var(--amber); }
+    .score-row.winner .score-bar { border-color: var(--amber); }
+    .score-row.winner .score-fill { background: var(--amber); }
+
+    .console {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 2px solid var(--green-dim);
+      background: #000;
+      color: var(--green-dim);
+      font-size: .76rem;
+      line-height: 1.55;
+    }
+
+    #consoleMessage { color: var(--green); }
+    .amber { color: var(--amber); }
+
+    @media (max-width: 800px) {
+      header { flex-direction: column; }
+      #linkStatus { text-align: left; }
+      .layout { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 500px) {
+      main { width: min(100% - 12px, 1120px); padding-top: 6px; }
+      .output-top { grid-template-columns: 112px 1fr; }
+      .prediction-box { min-height: 150px; }
+      #prediction { font-size: 5.5rem; }
+      .metric { padding: 8px; }
+      .metric-value { font-size: 1rem; }
+      .input-controls { grid-template-columns: 110px 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>MNIST_TERMINAL // KV260</h1>
+        <div class="subline">BUILD 1.1 // DPUCZDX8G_ISA1_B3136 // INT8 // LIVE MODE</div>
+      </div>
+      <div id="linkStatus">LINK: CONNECTING...</div>
+    </header>
+
+    <section class="layout">
+      <div class="panel">
+        <div class="panel-title">
+          <span>[ INPUT_BUFFER ]</span>
+          <span>WHITE_ON_BLACK</span>
+        </div>
+        <div class="canvas-area">
+          <canvas id="drawCanvas" width="420" height="420" aria-label="Draw a digit"></canvas>
+        </div>
+        <div class="input-controls">
+          <button id="clearButton" type="button">[ CLEAR ]</button>
+          <div class="live-box">● LIVE PREDICTION // 10 TPS LIMIT</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <span>[ CLASSIFIER_OUTPUT ]</span>
+          <span id="outputState">WAITING_FOR_INK</span>
+        </div>
+
+        <div class="output-top">
+          <div class="prediction-box"><span id="prediction">_</span></div>
+          <div class="metrics">
+            <div class="metric">
+              <div class="metric-label">LIVE_REQUEST_TPS</div>
+              <div id="liveTps" class="metric-value">0.0</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">DPU_EST_TPS</div>
+              <div id="dpuTps" class="metric-value">---</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">DPU_LATENCY</div>
+              <div id="dpuLatency" class="metric-value">--- ms</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">ROUND_TRIP</div>
+              <div id="roundTrip" class="metric-value">--- ms</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="model-input">
+          <canvas id="previewCanvas" width="28" height="28"></canvas>
+          <div class="input-copy">
+            <strong>MODEL_INPUT[1,28,28,1]</strong><br>
+            AUTO_CROP=ON // CENTER_OF_MASS=ON<br>
+            QUANTIZATION=SIGNED_INT8 // FIX_POINT=-1
+          </div>
+        </div>
+
+        <div class="scores-wrap">
+          <div class="scores-head">CLASS // RELATIVE_SCORE // RAW_INT8</div>
+          <div id="scores"></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="console">
+      &gt; PATH: CANVAS -&gt; 28x28_GRAY -&gt; SSH_TUNNEL -&gt; VART -&gt; DPU_IN_PL -&gt; ARGMAX<br>
+      &gt; CAMERA_HDMI_PIPELINE: <span class="amber">RUNNING_SEPARATELY</span><br>
+      &gt; STATUS: <span id="consoleMessage">INITIALIZING...</span>
+    </div>
+  </main>
+
+  <script>
+    const LIVE_INTERVAL_MS = 100;
+    const canvas = document.getElementById('drawCanvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const preview = document.getElementById('previewCanvas');
+    const previewCtx = preview.getContext('2d');
+    const clearButton = document.getElementById('clearButton');
+    const prediction = document.getElementById('prediction');
+    const scoresElement = document.getElementById('scores');
+    const linkStatus = document.getElementById('linkStatus');
+    const outputState = document.getElementById('outputState');
+    const consoleMessage = document.getElementById('consoleMessage');
+    const liveTpsElement = document.getElementById('liveTps');
+    const dpuTpsElement = document.getElementById('dpuTps');
+    const dpuLatencyElement = document.getElementById('dpuLatency');
+    const roundTripElement = document.getElementById('roundTrip');
+
+    let drawing = false;
+    let hasInk = false;
+    let inFlight = false;
+    let boardOnline = false;
+    let completions = [];
+
+    function setLink(state, message) {
+      linkStatus.className = state;
+      linkStatus.textContent = message;
+    }
+
+    function resetCanvas() {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      previewCtx.fillStyle = '#000';
+      previewCtx.fillRect(0, 0, 28, 28);
+      hasInk = false;
+      completions = [];
+      prediction.textContent = '_';
+      outputState.textContent = 'WAITING_FOR_INK';
+      consoleMessage.textContent = 'DRAW_DIGIT_TO_BEGIN';
+      liveTpsElement.textContent = '0.0';
+      dpuTpsElement.textContent = '---';
+      dpuLatencyElement.textContent = '--- ms';
+      roundTripElement.textContent = '--- ms';
+      renderScores(new Array(10).fill(0), -1);
+    }
+
+    function pointerPosition(event) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: (event.clientX - rect.left) * canvas.width / rect.width,
+        y: (event.clientY - rect.top) * canvas.height / rect.height,
+      };
+    }
+
+    function beginStroke(event) {
+      event.preventDefault();
+      drawing = true;
+      hasInk = true;
+      canvas.setPointerCapture(event.pointerId);
+      const point = pointerPosition(event);
+      ctx.beginPath();
+      ctx.moveTo(point.x, point.y);
+      ctx.lineTo(point.x + 0.01, point.y + 0.01);
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 40;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+      outputState.textContent = 'LIVE_INFERENCE';
+      consoleMessage.textContent = 'STREAMING_INPUT_TO_DPU';
+    }
+
+    function continueStroke(event) {
+      if (!drawing) return;
+      event.preventDefault();
+      const point = pointerPosition(event);
+      ctx.lineTo(point.x, point.y);
+      ctx.stroke();
+    }
+
+    function endStroke(event) {
+      if (!drawing) return;
+      event.preventDefault();
+      drawing = false;
+      ctx.closePath();
+    }
+
+    canvas.addEventListener('pointerdown', beginStroke);
+    canvas.addEventListener('pointermove', continueStroke);
+    canvas.addEventListener('pointerup', endStroke);
+    canvas.addEventListener('pointercancel', endStroke);
+    clearButton.addEventListener('click', resetCanvas);
+
+    function preprocessMnist() {
+      const width = canvas.width;
+      const height = canvas.height;
+      const source = ctx.getImageData(0, 0, width, height).data;
+      let minX = width;
+      let minY = height;
+      let maxX = -1;
+      let maxY = -1;
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          if (source[(y * width + x) * 4] > 8) {
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+          }
+        }
+      }
+
+      if (maxX < minX || maxY < minY) throw new Error('EMPTY_INPUT');
+
+      const cropWidth = maxX - minX + 1;
+      const cropHeight = maxY - minY + 1;
+      const scale = 20 / Math.max(cropWidth, cropHeight);
+      const targetWidth = cropWidth * scale;
+      const targetHeight = cropHeight * scale;
+      const temporary = document.createElement('canvas');
+      temporary.width = 28;
+      temporary.height = 28;
+      const temporaryCtx = temporary.getContext('2d', { willReadFrequently: true });
+      temporaryCtx.fillStyle = '#000';
+      temporaryCtx.fillRect(0, 0, 28, 28);
+      temporaryCtx.imageSmoothingEnabled = true;
+      temporaryCtx.imageSmoothingQuality = 'high';
+      temporaryCtx.drawImage(
+        canvas,
+        minX, minY, cropWidth, cropHeight,
+        (28 - targetWidth) / 2, (28 - targetHeight) / 2,
+        targetWidth, targetHeight,
+      );
+
+      const scaled = temporaryCtx.getImageData(0, 0, 28, 28).data;
+      const values = new Uint8Array(784);
+      let mass = 0;
+      let centerX = 0;
+      let centerY = 0;
+      for (let y = 0; y < 28; y++) {
+        for (let x = 0; x < 28; x++) {
+          const value = scaled[(y * 28 + x) * 4];
+          values[y * 28 + x] = value;
+          mass += value;
+          centerX += x * value;
+          centerY += y * value;
+        }
+      }
+
+      const shiftX = mass ? Math.round(13.5 - centerX / mass) : 0;
+      const shiftY = mass ? Math.round(13.5 - centerY / mass) : 0;
+      const centered = new Uint8Array(784);
+      for (let y = 0; y < 28; y++) {
+        for (let x = 0; x < 28; x++) {
+          const destinationX = x + shiftX;
+          const destinationY = y + shiftY;
+          if (destinationX >= 0 && destinationX < 28 && destinationY >= 0 && destinationY < 28) {
+            centered[destinationY * 28 + destinationX] = values[y * 28 + x];
+          }
+        }
+      }
+
+      const previewImage = previewCtx.createImageData(28, 28);
+      for (let i = 0; i < 784; i++) {
+        previewImage.data[i * 4] = centered[i];
+        previewImage.data[i * 4 + 1] = centered[i];
+        previewImage.data[i * 4 + 2] = centered[i];
+        previewImage.data[i * 4 + 3] = 255;
+      }
+      previewCtx.putImageData(previewImage, 0, 0);
+      return Array.from(centered);
+    }
+
+    function renderScores(scores, winner) {
+      const minimum = Math.min(...scores);
+      const maximum = Math.max(...scores);
+      const span = Math.max(1, maximum - minimum);
+      scoresElement.replaceChildren();
+
+      scores.forEach((score, digit) => {
+        const row = document.createElement('div');
+        row.className = `score-row${digit === winner ? ' winner' : ''}`;
+        const label = document.createElement('span');
+        label.textContent = digit;
+        const bar = document.createElement('div');
+        bar.className = 'score-bar';
+        const fill = document.createElement('div');
+        fill.className = 'score-fill';
+        fill.style.width = winner < 0 ? '0%' : `${Math.max(2, (score - minimum) / span * 100)}%`;
+        bar.appendChild(fill);
+        const value = document.createElement('span');
+        value.textContent = score;
+        row.append(label, bar, value);
+        scoresElement.appendChild(row);
+      });
+    }
+
+    function refreshLiveTps() {
+      const now = performance.now();
+      completions = completions.filter(timestamp => now - timestamp <= 1000);
+      liveTpsElement.textContent = completions.length.toFixed(1);
+    }
+
+    async function runLivePrediction() {
+      if (!hasInk || inFlight || !boardOnline) return;
+      inFlight = true;
+      const started = performance.now();
+
+      try {
+        const pixels = preprocessMnist();
+        const response = await fetch('/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pixels }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || `HTTP_${response.status}`);
+        if (!hasInk) return;
+
+        const elapsed = performance.now() - started;
+        completions.push(performance.now());
+        prediction.textContent = result.prediction;
+        dpuLatencyElement.textContent = `${result.inference_ms.toFixed(3)} ms`;
+        dpuTpsElement.textContent = Math.round(1000 / result.inference_ms).toLocaleString('en-US');
+        roundTripElement.textContent = `${elapsed.toFixed(1)} ms`;
+        outputState.textContent = `CLASS_${result.prediction}_LOCKED`;
+        consoleMessage.textContent = `DPU_OK // PREDICTION=${result.prediction}`;
+        renderScores(result.scores, result.prediction);
+        boardOnline = true;
+        setLink('online', `LINK: ONLINE // ${result.fingerprint}`);
+      } catch (error) {
+        boardOnline = false;
+        outputState.textContent = 'DPU_ERROR';
+        consoleMessage.textContent = error.message;
+        setLink('error', 'LINK: LOST');
+      } finally {
+        inFlight = false;
+      }
+    }
+
+    async function checkHealth() {
+      try {
+        const response = await fetch('/health', { cache: 'no-store' });
+        const health = await response.json();
+        if (!response.ok || !health.ready) throw new Error('NOT_READY');
+        boardOnline = true;
+        setLink('online', `LINK: ONLINE // ${health.fingerprint}`);
+        if (!hasInk) consoleMessage.textContent = 'DRAW_DIGIT_TO_BEGIN';
+      } catch (error) {
+        boardOnline = false;
+        setLink('error', 'LINK: OFFLINE');
+        consoleMessage.textContent = 'KV260_DPU_UNAVAILABLE';
+      }
+    }
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') resetCanvas();
+    });
+
+    resetCanvas();
+    checkHealth();
+    setInterval(runLivePrediction, LIVE_INTERVAL_MS);
+    setInterval(refreshLiveTps, 250);
+    setInterval(checkHealth, 3000);
+  </script>
+</body>
+</html>
